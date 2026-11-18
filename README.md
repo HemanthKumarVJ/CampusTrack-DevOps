@@ -77,3 +77,4 @@ python -m pytest -v
 Application development and initial automated testing completed.
 DevOps integration and deployment are part of the ongoing project.
 
+Jenkins automatic build trigger verification.

@@ -123,3 +123,24 @@ def test_attendance_for_unknown_student():
     )
 
     assert response.status_code == 404
+def test_get_student_by_roll_number():
+    client.post(
+        "/students",
+        json={
+            "name": "Rahul Kumar",
+            "roll_number": "CSE001",
+            "section": "A"
+        }
+    )
+
+    response = client.get("/students/roll/CSE001")
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Rahul Kumar"
+    assert response.json()["roll_number"] == "CSE001"
+
+
+def test_get_student_by_invalid_roll_number():
+    response = client.get("/students/roll/INVALID")
+
+    assert response.status_code == 404

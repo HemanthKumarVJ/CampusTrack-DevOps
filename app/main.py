@@ -1,28 +1,38 @@
 
+from datetime import date
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI(
-    title="Task Management API",
-    description="A simple REST API for managing tasks",
+    title="CampusTrack - Student Attendance API",
+    description="REST API for student registration and attendance tracking",
     version="1.0.0"
 )
 
-# In-memory task storage
-tasks = []
-next_id = 1
+students = {}
+attendance_records = []
+next_student_id = 1
 
 
-class TaskCreate(BaseModel):
-    title: str
-    completed: bool = False
+class StudentCreate(BaseModel):
+    name: str
+    roll_number: str
+    section: str
+
+
+class AttendanceCreate(BaseModel):
+    student_id: int
+    attendance_date: date
+    status: Literal["present", "absent"]
 
 
 @app.get("/")
 def home():
     return {
-        "message": "Welcome to Task Management API",
-        "docs": "/docs"
+        "message": "Welcome to CampusTrack",
+        "documentation": "/docs"
     }
 
 
@@ -31,34 +41,85 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/todos")
-def get_tasks():
-    return tasks
+@app.post("/students", status_code=201)
+def register_student(student: StudentCreate):
+    global next_student_id
 
+    for existing in students.values():
+        if existing["roll_number"] == student.roll_number:
+            raise HTTPException(status_code=409, detail="Roll number already exists")
 
-@app.post("/todos", status_code=201)
-def create_task(task: TaskCreate):
-    global next_id
-
-    new_task = {
-        "id": next_id,
-        "title": task.title,
-        "completed": task.completed
+    new_student = {
+        "id": next_student_id,
+        "name": student.name,
+        "roll_number": student.roll_number,
+        "section": student.section
     }
 
-    tasks.append(new_task)
-    next_id += 1
+    students[next_student_id] = new_student
+    next_student_id += 1
 
-    return new_task
+    return new_student
 
 
-@app.get("/todos/{task_id}")
-def get_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            return task
+@app.get("/students")
+def get_students():
+    return list(students.values())
 
-    raise HTTPException(
-        status_code=404,
-        detail="Task not found"
-    )
+
+@app.post("/attendance", status_code=201)
+def mark_attendance(record: AttendanceCreate):
+    if record.student_id not in students:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    for existing in attendance_records:
+        if (
+            existing["student_id"] == record.student_id
+            and existing["attendance_date"] == record.attendance_date.isoformat()
+        ):
+            raise HTTPException(status_code=409, detail="Attendance already marked")
+
+    new_record = {
+        "student_id": record.student_id,
+        "attendance_date": record.attendance_date.isoformat(),
+        "status": record.status
+    }
+
+    attendance_records.append(new_record)
+    return new_record
+
+
+@app.get("/attendance/{student_id}")
+def get_attendance(student_id: int):
+    if student_id not in students:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    return [
+        record for record in attendance_records
+        if record["student_id"] == student_id
+    ]
+
+
+@app.get("/students/{student_id}/percentage")
+def attendance_percentage(student_id: int):
+    if student_id not in students:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    records = [
+        record for record in attendance_records
+        if record["student_id"] == student_id
+    ]
+
+    total = len(records)
+    present = sum(record["status"] == "present" for record in records)
+
+    percentage = round(present / total * 100, 2) if total else 0
+
+    return {
+        "student_id": student_id,
+        "total_classes": total,
+        "present": present,
+        "absent": total - present,
+        "attendance_percentage": percentage
+    }
+

@@ -1,0 +1,6 @@
+---
+- name: Verify CampusTrack configuration
+  ansible.builtin.command:
+    cmd: cat /tmp/campustrack/campustrack.env
+  changed_when: false
+

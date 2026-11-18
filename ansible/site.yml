@@ -1,0 +1,7 @@
+---
+- name: Configure CampusTrack application
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - campustrack

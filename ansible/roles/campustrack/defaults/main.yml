@@ -1,0 +1,4 @@
+---
+app_name: CampusTrack
+app_environment: development
+app_port: 8000
